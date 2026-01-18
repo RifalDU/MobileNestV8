@@ -5,6 +5,7 @@
  * MODE: HYBRID (PHP initial render + AJAX filter)
  * FIX: Handle both base64 images and file paths
  * FIX: Remove cart button when filtering (only "Lihat Detail")
+ * FIX: Use UploadHandler-compatible image URL building
  * ============================================
  */
 
@@ -14,21 +15,38 @@ let searchDebounceTimer = null;
 /**
  * Build image URL for product images from API
  * Handles both base64 data URLs and local filenames
+ * FIXED: Now uses same logic as UploadHandler in PHP
  */
 function buildImageUrl(gambar) {
     if (!gambar) {
         return '';
     }
     
-    // If it's already a data URL or full URL, return as-is
-    if (gambar.includes('data:image') || gambar.includes('http')) {
+    // If it's already a data URL or full URL with http/https, return as-is
+    if (gambar.includes('data:image') || gambar.includes('http://') || gambar.includes('https://')) {
         return gambar;
     }
     
-    // If it's a filename, build direct path to uploads folder
+    // If it's a relative path starting with /, return as-is
+    if (gambar.startsWith('/')) {
+        return gambar;
+    }
+    
+    // If it's just a filename (no slashes), build the path
     if (!gambar.includes('/')) {
-        const baseUrl = window.location.origin;
-        return baseUrl + '/MobileNest/uploads/produk/' + encodeURIComponent(gambar);
+        // Get the base path from current location
+        const pathParts = window.location.pathname.split('/');
+        let basePath = '';
+        
+        // Find 'MobileNest' in path and go to that level
+        const mobileNestIndex = pathParts.indexOf('MobileNest');
+        if (mobileNestIndex !== -1) {
+            basePath = '/' + pathParts.slice(1, mobileNestIndex + 1).join('/');
+        } else {
+            basePath = '/MobileNest';
+        }
+        
+        return basePath + '/uploads/produk/' + encodeURIComponent(gambar);
     }
     
     // Return as-is if it's already a path
@@ -133,6 +151,7 @@ async function applyFilter() {
 
         const products = await response.json();
         console.log('Filter result:', products.length, 'products');
+        console.log('Products data:', products);
         
         renderProducts(products);
 
@@ -220,7 +239,11 @@ function renderProducts(products) {
                 <!-- Product Image -->
                 <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px; position: relative; overflow: hidden;">
                     ${imageUrl ? `
-                        <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(product.nama_produk)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="console.error('Image failed to load:', this.src);">
+                        <img src="${escapeHtml(imageUrl)}" 
+                             alt="${escapeHtml(product.nama_produk)}" 
+                             style="width: 100%; height: 100%; object-fit: cover;" 
+                             loading="lazy"
+                             onerror="this.parentElement.innerHTML = '<i class=\"bi bi-phone\" style=\"font-size: 3rem; color: #ccc;\"></i>'; console.error('Image failed to load:', this.src);">
                     ` : `
                         <i class="bi bi-phone" style="font-size: 3rem; color: #ccc;"></i>
                     `}
