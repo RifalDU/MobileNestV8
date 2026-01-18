@@ -6,6 +6,7 @@
  * FIX: Handle both base64 images and file paths
  * FIX: Remove cart button when filtering (only "Lihat Detail")
  * FIX: Use correct admin/uploads/produk path for images
+ * FIX: Clean error handling for failed images
  * ============================================
  */
 
@@ -203,6 +204,28 @@ function showLoadingState() {
 }
 
 /**
+ * Handle image load error - show phone icon
+ */
+function handleImageError(img) {
+    // Replace image with phone icon
+    img.style.display = 'none';
+    
+    // Find parent container
+    const container = img.parentElement;
+    
+    // Check if icon already exists
+    if (!container.querySelector('.bi-phone')) {
+        const icon = document.createElement('i');
+        icon.className = 'bi bi-phone';
+        icon.style.fontSize = '3rem';
+        icon.style.color = '#ccc';
+        container.appendChild(icon);
+    }
+    
+    console.warn('Image failed to load:', img.src);
+}
+
+/**
  * Render products from API response
  * FILTER MODE: Only shows "Lihat Detail" button, no cart button
  */
@@ -244,7 +267,8 @@ function renderProducts(products) {
                              alt="${escapeHtml(product.nama_produk)}" 
                              style="width: 100%; height: 100%; object-fit: cover;" 
                              loading="lazy"
-                             onerror="this.parentElement.innerHTML = '<i class=\"bi bi-phone\" style=\"font-size: 3rem; color: #ccc;\"></i>'; console.error('Image failed to load:', this.src);">
+                             onload="console.log('Image loaded:', this.src)"
+                             onerror="handleImageError(this)">
                     ` : `
                         <i class="bi bi-phone" style="font-size: 3rem; color: #ccc;"></i>
                     `}
@@ -283,6 +307,13 @@ function renderProducts(products) {
         </div>
         `;
     }).join('');
+    
+    // Attach error handlers to all images (for dynamic content)
+    setTimeout(() => {
+        document.querySelectorAll('.card-img-top img').forEach(img => {
+            img.onerror = function() { handleImageError(this); };
+        });
+    }, 100);
 }
 
 /**
