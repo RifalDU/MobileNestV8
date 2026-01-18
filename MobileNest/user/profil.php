@@ -24,20 +24,28 @@ $stmt->close();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['edit_profil'])) {
         $nama = trim($_POST['nama_lengkap']);
-        $email = trim($_POST['email']);
+        // ✅ IMPORTANT: Email dari database, JANGAN dari POST (prevent unauthorized change)
+        $email = $user_data['email'];
         $telepon = trim($_POST['no_telepon']);
         $alamat = trim($_POST['alamat']);
         $foto_url = trim($_POST['foto_url']);
         
         if (empty($nama)) $errors[] = 'Nama tidak boleh kosong';
-        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'Email tidak valid';
+        // Email sudah divalidasi saat registrasi, jangan ubah
         
         if (empty($errors)) {
-            $update = $conn->prepare("UPDATE users SET nama_lengkap=?, email=?, no_telepon=?, alamat=? WHERE id_user=?");
-            $update->bind_param('ssssi', $nama, $email, $telepon, $alamat, $user_id);
+            // ✅ FIX: Tidak termasuk email dalam UPDATE query
+            $update = $conn->prepare("UPDATE users SET nama_lengkap=?, no_telepon=?, alamat=? WHERE id_user=?");
+            $update->bind_param('sssi', $nama, $telepon, $alamat, $user_id);
             if ($update->execute()) {
                 $message = 'Profil berhasil diperbarui!';
-                $user_data = ['nama_lengkap'=>$nama, 'email'=>$email, 'no_telepon'=>$telepon, 'alamat'=>$alamat];
+                // ✅ Refresh data dari database
+                $sql_refresh = "SELECT * FROM users WHERE id_user = ?";
+                $stmt_refresh = $conn->prepare($sql_refresh);
+                $stmt_refresh->bind_param('i', $user_id);
+                $stmt_refresh->execute();
+                $user_data = $stmt_refresh->get_result()->fetch_assoc();
+                $stmt_refresh->close();
             }
             $update->close();
         }
@@ -125,6 +133,26 @@ body { background: #f5f7fa; }
     border-color: #667eea;
     box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
 }
+/* ✅ Style untuk readonly email */
+.form-control:read-only {
+    background-color: #f8f9fa;
+    color: #6c757d;
+    cursor: not-allowed;
+    border-color: #dee2e6;
+}
+.form-control:read-only:focus {
+    border-color: #dee2e6;
+    box-shadow: none;
+}
+.readonly-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.readonly-label .lock-icon {
+    color: #dc3545;
+    font-size: 14px;
+}
 .btn-primary {
     background: linear-gradient(135deg, #667eea, #764ba2);
     border: none;
@@ -147,6 +175,15 @@ body { background: #f5f7fa; }
     padding: 30px;
     text-align: center;
     background: #f8f9fa;
+}
+.email-info {
+    background: #e7f3ff;
+    border-left: 4px solid #0066cc;
+    padding: 12px 15px;
+    border-radius: 6px;
+    margin-top: 8px;
+    font-size: 13px;
+    color: #004085;
 }
 </style>
 </head>
@@ -209,8 +246,15 @@ body { background: #f5f7fa; }
     <input type="text" class="form-control" name="nama_lengkap" value="<?php echo htmlspecialchars($user_data['nama_lengkap']); ?>" required>
 </div>
 <div class="col-md-6 mb-3">
-    <label class="form-label fw-bold">Email</label>
-    <input type="email" class="form-control" name="email" value="<?php echo htmlspecialchars($user_data['email']); ?>" required>
+    <label class="form-label fw-bold readonly-label">
+        <span>Email</span>
+        <span class="lock-icon" title="Email tidak bisa diubah"><i class="bi bi-lock"></i></span>
+    </label>
+    <!-- ✅ FIX: Email field readonly -->
+    <input type="email" class="form-control" name="email" value="<?php echo htmlspecialchars($user_data['email']); ?>" readonly>
+    <div class="email-info">
+        <i class="bi bi-info-circle"></i> Email tidak bisa diubah. Hubungi support jika ingin mengubah email.
+    </div>
 </div>
 <div class="col-md-6 mb-3">
     <label class="form-label fw-bold">No. Telepon</label>
