@@ -5,7 +5,7 @@
  * MODE: HYBRID (PHP initial render + AJAX filter)
  * FIX: Handle both base64 images and file paths
  * FIX: Remove cart button when filtering (only "Lihat Detail")
- * FIX: Use UploadHandler-compatible image URL building
+ * FIX: Use correct admin/uploads/produk path for images
  * ============================================
  */
 
@@ -15,7 +15,7 @@ let searchDebounceTimer = null;
 /**
  * Build image URL for product images from API
  * Handles both base64 data URLs and local filenames
- * FIXED: Now uses same logic as UploadHandler in PHP
+ * FIXED: Now points to correct admin/uploads/produk path
  */
 function buildImageUrl(gambar) {
     if (!gambar) {
@@ -46,7 +46,8 @@ function buildImageUrl(gambar) {
             basePath = '/MobileNest';
         }
         
-        return basePath + '/uploads/produk/' + encodeURIComponent(gambar);
+        // Path ke admin/uploads/produk
+        return basePath + '/admin/uploads/produk/' + encodeURIComponent(gambar);
     }
     
     // Return as-is if it's already a path
