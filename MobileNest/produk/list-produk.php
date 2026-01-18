@@ -154,14 +154,8 @@ include '../includes/header.php';
                             // Build image URL dengan UploadHandler
                             $image_url = '';
                             if (!empty($produk['gambar'])) {
-                                // Check if it's a filename (local upload) or URL
-                                if (strpos($produk['gambar'], 'http') === false && strpos($produk['gambar'], '/') === false) {
-                                    // It's a filename - use UploadHandler to build URL
-                                    $image_url = UploadHandler::getFileUrl($produk['gambar'], 'produk');
-                                } else {
-                                    // It's already a URL
-                                    $image_url = $produk['gambar'];
-                                }
+                                // Use UploadHandler::getFileUrl untuk konsistensi
+                                $image_url = UploadHandler::getFileUrl($produk['gambar'], 'produk');
                             }
                     ?>
                     <div class="product-card" data-product-id="<?php echo $produk['id_produk']; ?>">
