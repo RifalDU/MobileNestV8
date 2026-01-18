@@ -3,6 +3,7 @@ header('Content-Type: application/json');
 session_start();
 require_once '../config.php';
 require_once 'response.php';
+require_once '../includes/upload-handler.php';
 
 // Enable error logging
 ini_set('log_errors', 1);
@@ -72,27 +73,15 @@ try {
         throw new Exception('Format file hanya JPG atau PNG. Got: ' . $mime_type);
     }
 
-    // Create uploads directory if not exists
-    $upload_dir = '../uploads/pembayaran';
-    if (!is_dir($upload_dir)) {
-        if (!mkdir($upload_dir, 0755, true)) {
-            throw new Exception('Gagal membuat folder upload: ' . $upload_dir);
-        }
+    // ✅ FIX: Gunakan UploadHandler untuk konsistensi path
+    $upload_result = UploadHandler::uploadPaymentProof($file, $id_transaksi);
+    
+    if (!$upload_result['success']) {
+        throw new Exception($upload_result['message']);
     }
-
-    // Generate filename
-    $file_ext = $mime_type === 'image/jpeg' ? 'jpg' : 'png';
-    $filename = 'pembayaran_' . $user_id . '_' . time() . '.' . $file_ext;
-    $filepath = $upload_dir . '/' . $filename;
-
-    error_log('Uploading to: ' . $filepath);
-
-    // Move uploaded file
-    if (!move_uploaded_file($file['tmp_name'], $filepath)) {
-        throw new Exception('Gagal menyimpan file: ' . $filepath);
-    }
-
-    error_log('File uploaded successfully: ' . $filepath);
+    
+    $filename = $upload_result['filename'];
+    error_log('File uploaded successfully via UploadHandler: ' . $filename);
 
     // Get transaction details
     $query_trans = "SELECT * FROM transaksi WHERE id_transaksi = ? AND id_user = ?";
